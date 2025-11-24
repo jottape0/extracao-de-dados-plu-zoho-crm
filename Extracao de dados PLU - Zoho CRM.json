@@ -1,0 +1,812 @@
+{
+  "name": "Extracao de dados PLU - Zoho CRM",
+  "nodes": [
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        304
+      ],
+      "id": "dbe45f11-7d85-4e47-ba56-cb9fd1c70972",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "4hasBmSad4X3zBoR",
+          "name": "OpenRouter account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"fileName\": {\n      \"type\": [\"string\", \"null\"],\n      \"nullable\": true\n    },\n    \"isContract\": {\n      \"type\": \"boolean\"\n    },\n    \"razaoSocial\": {\n      \"type\": \"string\"\n    },\n    \"produtos\": {\n      \"type\": \"string\"\n    },\n    \"avisoPrevio\": {\n      \"type\": [\"string\", \"null\"],\n      \"nullable\": true\n    },\n    \"fidelizacao\": {\n      \"type\": [\"string\", \"null\"],\n      \"nullable\": true\n    },\n    \"multasRescisorias\": {\n      \"type\": [\"string\", \"null\"],\n      \"nullable\": true\n    },\n    \"renovacaoAutomatica\": {\n      \"type\": [\"string\", \"null\"],\n      \"nullable\": true\n    },\n    \"dataVencimentoLTDU\": {\n      \"type\": [\"string\", \"null\"],\n      \"nullable\": true\n    }\n  },\n  \"required\": [\n    \"isContract\",\n    \"razaoSocial\",\n    \"produtos\"\n  ]\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2368,
+        144
+      ],
+      "id": "557daa76-85b4-41ba-b24d-3ce40d5fe2bf",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1728,
+        176
+      ],
+      "id": "1ce3cd53-99de-47fd-8130-eb15dd8c30d4",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DECLARE @customer_code NVARCHAR(50) = {{ $('Exportar dados').item.json.query.codigoCliente }};\n\nSELECT\n    n.idNegocioZoho,\n    a.idAnexoZoho AS idAttachment,\n    a.nomeAnexo,\n    CONCAT(n.idNegocioZoho, '/', a.idAnexoZoho) AS s3Key\nFROM dbo.negocios n\nJOIN dbo.anexos a \n    ON a.idNegocioZoho = n.idNegocioZoho\nWHERE n.codigoCliente = @customer_code\n  AND a.idAnexoZoho IS NOT NULL;\n"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        864,
+        -64
+      ],
+      "id": "b5e270d8-de29-4391-af26-29b8bc0dbe64",
+      "name": "Consulta no banco zohodadosdb",
+      "credentials": {
+        "microsoftSql": {
+          "id": "nQAXPHjvrW9v4cnG",
+          "name": "Microsoft SQL account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7b243338-9e93-4e12-a2bb-91e86498530d",
+              "name": "bucket",
+              "value": "group-zoho-anexos",
+              "type": "string"
+            },
+            {
+              "id": "13f180e4-13c0-43a1-bf72-ad2544bd5771",
+              "name": "key",
+              "value": "={{ $json.idNegocioZoho }}/{{ $json.nomeAnexo }}",
+              "type": "string"
+            },
+            {
+              "id": "ca93cea4-bc76-4e86-88c2-db251b76a028",
+              "name": "region",
+              "value": "us-east-1",
+              "type": "string"
+            },
+            {
+              "id": "b5699f8e-70a8-4559-9547-08122643e946",
+              "name": "expiresIn",
+              "value": 900,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1088,
+        -64
+      ],
+      "id": "761fb784-ac66-4cd1-9d0f-ad2645cb7940",
+      "name": "Formata os campos"
+    },
+    {
+      "parameters": {
+        "bucketName": "={{ $json.bucket }}",
+        "fileKey": "={{ $json.key }}"
+      },
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        -64
+      ],
+      "id": "153b7ad7-9c5d-4d7c-86f5-ffec3e211f29",
+      "name": "Chamada no s3 para baixar os arquivos",
+      "retryOnFail": false,
+      "alwaysOutputData": false,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "aws": {
+          "id": "bG6oWstZ4xB1yYeN",
+          "name": "AWS account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "84164485-e397-4622-aeb0-44992b5baad5",
+              "leftValue": "={{ $binary.data.fileExtension.toLowerCase().trim() }}",
+              "rightValue": "pdf",
+              "operator": {
+                "type": "string",
+                "operation": "endsWith"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1584,
+        -64
+      ],
+      "id": "b346b8dc-20bc-455d-a9a2-a9299f562d53",
+      "name": "Validação para saber se é um PDF"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        -80
+      ],
+      "id": "4c36193b-208f-4a24-b32a-34a04c073c54",
+      "name": "Extração de PDF"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Função:\nVocê é um agente especializado em leitura de PDFs. Sua missão é identificar se o documento é um CONTRATO e extrair informações estruturadas.\n\nEntrada:\n{{ $json.text }}\n\nTarefa:\n1. Analisar se o texto é um contrato.\n2. Extrair dados conforme regras abaixo.\n\nCritérios para ser contrato:\nProcure: \"pedido de licença\", \"razão social\", \"cnpj\", \"forma de pagamento\", \"multas rescisórias\", \"termos de uso\", \"assinaturas\".\n\nSaída Obrigatória (JSON):\nResponda APENAS com o JSON. Sem markdown (```), sem texto introdutório.\n\nSe for contrato, preencha os campos.\nSe NÃO for contrato, preencha \"isContract\": false e devolva todos os campos de texto como strings vazias (\"\").\n\nEstrutura do JSON de resposta:\n{\n  \"fileName\": \"\",\n  \"isContract\": true,\n  \"razaoSocial\": \"Nome da Empresa ou Vazio\", \n  \"produtos\": \"Nome do Produto ou Vazio\",\n  \"avisoPrevio\": \"\",\n  \"fidelizacao\": \"\",\n  \"multasRescisorias\": \"\",\n  \"renovacaoAutomatica\": \"\",\n  \"dataVencimentoLTDU\": \"\"\n}\n\nRegras de Preenchimento:\n1. \"renovacaoAutomatica\": deve ser estritamente \"sim\", \"nao\" ou \"\" (vazio).\n2. Campos não identificados: Devem ser preenchidos com string vazia \"\".\n3. NUNCA use: \"null\", \"nil\", \"nenhum\", \"n/a\". Use apenas \"\".\n4. Escapar caracteres: Se houver aspas ou quebras de linha dentro de um valor, trate-os para que o JSON não quebre.\n\nO campo \"razaoSocial\" e \"produtos\" SÃO OBRIGATÓRIOS no schema. Se não encontrar, retorne string vazia \"\".",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        2304,
+        -80
+      ],
+      "id": "8a317c35-4b49-4697-bfba-445472cb25a0",
+      "name": "Agente Inteligente responsável por extrair os campos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// query pode vir dentro de $json.query OU direto em $json\nconst q = $json.query ?? $json;\n\n// normaliza tudo\nconst trackingId = q.trackingId?.toString().trim();\nconst codigoCliente = q.codigoCliente?.toString().trim();\nconst limit = Math.min(Math.max(parseInt(q.limit ?? '50', 10) || 50, 1), 500);\nconst offset = Math.max(parseInt(q.offset ?? '0', 10) || 0, 0);\nconst format = (q.format || 'json').toLowerCase();\n\n// segurança opcional via X-Auth\nconst expected = $env.SEGREDO_STATUS || '';\nconst hdr = ($json.headers?.['x-auth'] || $json.headers?.['X-Auth'] || '').trim();\nif (expected && hdr !== expected) throw new Error('Unauthorized');\n\n// validação\nif (!trackingId && !codigoCliente) {\n  throw new Error('Informe trackingId OU codigoCliente');\n}\n\nreturn [{\n  json: { trackingId, codigoCliente, limit, offset, format }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -80
+      ],
+      "id": "ab2889a9-00b2-4a6f-8cbb-05b3b7721567",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "YAp6uCZjrbR1iN6Q",
+          "mode": "list",
+          "cachedResultName": "zoho_plu_extract_dev",
+          "cachedResultUrl": "/projects/e2KeIZTjDUXwADV5/datatables/YAp6uCZjrbR1iN6Q"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "codigoCliente",
+              "keyValue": "={{ $json.codigoCliente }}"
+            },
+            {
+              "keyName": "isContract",
+              "condition": "isTrue"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -80
+      ],
+      "id": "b65c4a21-cab4-4754-ba41-e9a4aafce022",
+      "name": "Get row(s)",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "path": "plu/status",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        -80
+      ],
+      "id": "695350aa-849a-4cec-95d6-e3ee87ad3825",
+      "name": "Exportar dados",
+      "webhookId": "71993662-a966-4854-b45c-1b82a22757ea",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "DckczlAgULK9mvst",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega todos os itens vindos do \"Get row(s)\"\nconst items = $input.all();\n\nfunction esc(str) {\n  if (str === null || str === undefined) return '';\n  return String(str)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;');\n}\n\n// Monta as linhas da tabela\nconst rowsHtml = items.map(item => {\n  const r = item.json;\n\n  return `\n    <tr>\n      <td>${esc(r.codigoCliente)}</td>\n      <td>${esc(r.fileName)}</td>\n      <td>${esc(r.razaoSocial)}</td>\n      <td>${esc(r.avisoPrevio)}</td>\n      <td>${esc(r.fidelizacao || '-')}</td>\n      <td>${esc(r.produtos)}</td>\n      <td>${esc(r.multasRescisorias || '-')}</td>\n      <td>${esc(r.renovacaoAutomatica)}</td>\n      <td>${esc(r.dataVencimentoLTDU)}</td>\n    </tr>\n  `;\n}).join('\\n');\n\nconst html = `\n<html>\n  <head>\n    <style>\n      table.custom-table, \n      table.custom-table th, \n      table.custom-table td {\n        border: 1px solid #b5b5b5 !important;\n        border-collapse: collapse !important;\n      }\n      table.custom-table th {\n        background: #2f3640 !important;\n        color: white !important;\n        padding: 10px !important;\n      }\n      table.custom-table td {\n        padding: 8px !important;\n      }\n    </style>\n  </head>\n\n  <div style=\"\n    display:flex;\n    justify-content:space-between;\n    align-items:center;\n    margin-bottom:18px;\n\">\n  <h2 style=\"color:#2c3e50; margin:0; font-weight:600;\">\n    Resultado da consulta\n  </h2>\n\n  <a href=\"https://n8n.groupsoftware.com.br/form/cbbcf2bb-36f1-4f39-af02-5de5583db78d\" \n     style=\"\n       background:#273c75;\n       color:white;\n       padding:10px 18px;\n       border-radius:6px;\n       text-decoration:none;\n       font-size:14px;\n       font-weight:600;\n       box-shadow:0 1px 3px rgba(0,0,0,0.15);\n     \">\n    Nova consulta\n  </a>\n</div>\n\n\n    <table class=\"custom-table\" style=\"width:100%; background:white;\">\n      <thead>\n        <tr>\n          <th>Código Cliente</th>\n          <th>Arquivo</th>\n          <th>Razão Social</th>\n          <th>Aviso Prévio</th>\n          <th>Fidelização</th>\n          <th>Produto</th>\n          <th>Multas Rescisórias</th>\n          <th>Renovação Automática</th>\n          <th>Vencimento LTDU</th>\n        </tr>\n      </thead>\n\n      <tbody>\n        ${rowsHtml || `\n          <tr>\n            <td colspan=\"9\" style=\"text-align:center;\">Nenhum registro encontrado.</td>\n          </tr>\n        `}\n      </tbody>\n    </table>\n  </body>\n</html>\n`;\n\n\nreturn [\n  {\n    json: {\n      data: html,   // <-- é isso que o Form Ending está usando: {{$json.data}}\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3712,
+        -96
+      ],
+      "id": "c9275572-6724-46c2-9ab2-44dc1d11e642",
+      "name": "HTML formatado "
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $input.first().json.data }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3968,
+        -96
+      ],
+      "id": "8b350d24-8579-4bae-a452-a1a3585b7732",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recebe todos os itens como array\nconst rows = $input.all().map(item => item.json);\n\n// Função auxiliar para padronizar o avisoPrévio\nfunction padronizarAvisoPrevio(v) {\n    if (!v) return \"-\";\n    v = String(v).toLowerCase().trim();\n\n    // Casos possíveis\n    if (v === \"60\" || v === \"sessenta\" || v === \"60 dias\" || v === \"60 (sessenta)\" || v === \"60 (sessenta) dias\")\n        return \"60 dias\";\n\n    if (v.includes(\"60\")) return \"60 dias\";\n\n    return v;\n}\n\n// Função para padronizar fidelização\nfunction padronizarVazio(v) {\n    if (!v || v === \"Empty\" || v === \"null\") return \"-\";\n    return v;\n}\n\n// Função para padronizar renovação\nfunction padronizarRenovacao(v) {\n    if (!v) return \"-\";\n    v = v.toString().toLowerCase();\n    if (v === \"sim\" || v === \"yes\" || v === \"true\") return \"sim\";\n    if (v === \"nao\" || v === \"não\" || v === \"no\" || v === \"false\") return \"nao\";\n    return v;\n}\n\n// Padroniza cada linha\nconst normalizados = rows.map(r => ({\n    ...r,\n    avisoPrevio: padronizarAvisoPrevio(r.avisoPrevio),\n    fidelizacao: padronizarVazio(r.fidelizacao),\n    multasRescisorias: padronizarVazio(r.multasRescisorias),\n    renovacaoAutomatica: padronizarRenovacao(r.renovacaoAutomatica),\n}));\n\nreturn normalizados.map(n => ({ json: n }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3232,
+        -96
+      ],
+      "id": "dc0cfa5a-cbb5-4997-a341-434d5e720a7c",
+      "name": "Formata os campos1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// O agente devolve \"output\", mas precisamos preservar o s3Key original\nconst items = $input.all();\nconst result = items.map(item => ({\n  json: {\n    ...item.json.output,     // dados interpretados pela IA\n    s3Key: item.json.s3Key,  // preserva o s3Key original\n  }\n}));\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        -80
+      ],
+      "id": "9d9ff1f5-2701-42ef-84da-09ec28ba6cbd",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "YAp6uCZjrbR1iN6Q",
+          "mode": "list",
+          "cachedResultName": "zoho_plu_extract_dev",
+          "cachedResultUrl": "/projects/e2KeIZTjDUXwADV5/datatables/YAp6uCZjrbR1iN6Q"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "isContract": "={{ $('Agente Inteligente responsável por extrair os campos').item.json.output.isContract }}",
+            "razaoSocial": "={{ $('Agente Inteligente responsável por extrair os campos').item.json.output.razaoSocial }}",
+            "avisoPrevio": "={{ $('Agente Inteligente responsável por extrair os campos').item.json.output.avisoPrevio }}",
+            "fidelizacao": "={{ $('Agente Inteligente responsável por extrair os campos').item.json.output.fidelizacao }}",
+            "produtos": "={{ $('Agente Inteligente responsável por extrair os campos').item.json.output.produtos }}",
+            "multasRescisorias": "={{ $('Agente Inteligente responsável por extrair os campos').item.json.output.multasRescisorias }}",
+            "renovacaoAutomatica": "={{ $('Agente Inteligente responsável por extrair os campos').item.json.output.renovacaoAutomatica }}",
+            "dataVencimentoLTDU": "={{ $('Agente Inteligente responsável por extrair os campos').item.json.output.dataVencimentoLTDU }}",
+            "s3Key": "={{ $('Consulta no banco zohodadosdb').item.json.s3Key }}",
+            "fileName": "={{ $('Consulta no banco zohodadosdb').item.json.nomeAnexo }}",
+            "trackingId": "={{ $('Exportar dados').item.json.query.trackingId }}",
+            "codigoCliente": "={{ $('Exportar dados').item.json.query.codigoCliente }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "fileName",
+              "displayName": "fileName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "isContract",
+              "displayName": "isContract",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "razaoSocial",
+              "displayName": "razaoSocial",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "avisoPrevio",
+              "displayName": "avisoPrevio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "fidelizacao",
+              "displayName": "fidelizacao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "produtos",
+              "displayName": "produtos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "multasRescisorias",
+              "displayName": "multasRescisorias",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "renovacaoAutomatica",
+              "displayName": "renovacaoAutomatica",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "dataVencimentoLTDU",
+              "displayName": "dataVencimentoLTDU",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "trackingId",
+              "displayName": "trackingId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "codigoCliente",
+              "displayName": "codigoCliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "s3Key",
+              "displayName": "s3Key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        2912,
+        -16
+      ],
+      "id": "de2b1aee-ce1b-49d5-8817-2f72cd5a7359",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2368,
+        304
+      ],
+      "id": "e481ba7b-b968-4115-8f73-11af1d740668",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "4hasBmSad4X3zBoR",
+          "name": "OpenRouter account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0024c228-967e-49ae-b623-7ed6e72c6d8a",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        -80
+      ],
+      "id": "1ad7477b-dbdc-4650-a9a6-14fe1978dd52",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0aa774e0-3483-40b9-b63d-e1efa22a7af8",
+              "leftValue": "={{ $json.isContract }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        3440,
+        -96
+      ],
+      "id": "226e9fd7-5d67-4307-8fd4-e0baf35c05c5",
+      "name": "Filter"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Inteligente responsável por extrair os campos",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agente Inteligente responsável por extrair os campos",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta no banco zohodadosdb": {
+      "main": [
+        [
+          {
+            "node": "Formata os campos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata os campos": {
+      "main": [
+        [
+          {
+            "node": "Chamada no s3 para baixar os arquivos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chamada no s3 para baixar os arquivos": {
+      "main": [
+        [
+          {
+            "node": "Validação para saber se é um PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validação para saber se é um PDF": {
+      "main": [
+        [
+          {
+            "node": "Extração de PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extração de PDF": {
+      "main": [
+        [
+          {
+            "node": "Agente Inteligente responsável por extrair os campos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Inteligente responsável por extrair os campos": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exportar dados": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML formatado ": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata os campos1": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Formata os campos1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Consulta no banco zohodadosdb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row": {
+      "main": [
+        [
+          {
+            "node": "Formata os campos1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "HTML formatado ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8ff59339-b3ba-4305-864d-a359702e70e6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0fb2d8e68998d77bb88f9af3744a1b5969485af4674b9ae26770ef0d734a521d"
+  },
+  "id": "jHePBCixZBpl8CR6",
+  "tags": []
+}
