@@ -1,9 +1,9 @@
-###🎯 Objetivo
+### 🎯 Objetivo
 
 O principal objetivo deste workflow é automatizar a extração de dados-chave de contratos em formato PDF relacionados a um cliente específico (identificado pelo codigoCliente) e armazenar esses dados em um DataTable para acesso rápido e geração 
 de relatórios formatados em HTML.
 
-###⚙️ Fluxo de Processamento (Workflow)
+### ⚙️ Fluxo de Processamento (Workflow)
 
 O processo é dividido em duas principais rotas, começando com a entrada via Webhook e normalização de parâmetros.
 
