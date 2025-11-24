@@ -58,12 +58,13 @@ O processo é dividido em duas principais rotas, começando com a entrada via We
     Respond to Webhook1: Envia a resposta HTML formatada de volta ao solicitante com o status 200 OK e Content-Type: text/html.
 
 
-🛠️ Credenciais Necessárias
+### 🛠️ Credenciais Necessárias
 
 Este workflow requer as seguintes credenciais configuradas no n8n:
 
-Credencial	Tipo	Uso
-OpenRouter account 3	OpenRouter API Key	Para comunicação com o LLM (openai/gpt-4o-mini) para extração de dados.
-Microsoft SQL account 2	Microsoft SQL	Para consultar a base de dados de anexos (zohodadosdb).
-AWS account 3	AWS (S3)	Para baixar os arquivos anexados do bucket group-zoho-anexos.
-Header Auth account 2	HTTP Header Auth	Opcional, para segurança de acesso ao Webhook via cabeçalho X-Auth.
+| Credencial | Tipo | Uso |
+| :--- | :--- | :--- |
+| **OpenRouter account 3** | OpenRouter API Key | Para comunicação com o LLM (`openai/gpt-4o-mini`) para extração de dados. |
+| **Microsoft SQL account 2** | Microsoft SQL | Para consultar a base de dados de anexos (`zohodadosdb`). |
+| **AWS account 3** | AWS (S3) | Para baixar os arquivos anexados do bucket `group-zoho-anexos`. |
+| **Header Auth account 2** | HTTP Header Auth | Opcional, para segurança de acesso ao Webhook via cabeçalho `X-Auth`. |
